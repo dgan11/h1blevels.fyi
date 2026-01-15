@@ -33,6 +33,7 @@
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            display: inline-block;
         }
         .search-row {
             display: flex;
@@ -40,18 +41,15 @@
             flex-wrap: wrap;
             align-items: flex-end;
         }
-        .search-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: flex-end;
+        .input-group.grow + .input-group {
+            margin-left: 24px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
-        .input-group.grow { flex: 1; min-width: 200px; }
+        .input-group.grow { flex: 1; min-width: 450px; max-width: 600px; }
         label {
             font-size: 12px;
             font-weight: 600;
@@ -71,19 +69,16 @@
         }
         .multi-select {
             position: relative;
-            width: 150px;
+            min-width: 130px;
         }
         .ms-selected {
-            padding: 10px 12px;
+            padding: 10px 14px;
             border: 1px solid #ddd;
             border-radius: 6px;
             font-size: 14px;
             background: #fff;
             cursor: pointer;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            height: 42px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -319,9 +314,26 @@
         .sort-arrow { font-size: 10px; margin-left: 2px; opacity: 0.5; display: inline; }
         .sortable[data-dir="asc"] .sort-arrow,
         .sortable[data-dir="desc"] .sort-arrow { opacity: 1; }
+        .mobile-only { display: none; }
         @media (max-width: 768px) {
+            .search-box { display: block; }
             .input-group { width: 100%; }
-            th, td { padding: 8px; font-size: 12px; }
+            .input-group.grow { min-width: 100%; max-width: 100%; }
+            .input-group.grow + .input-group { margin-left: 0; }
+            .multi-select { width: 100%; }
+            th { padding: 6px; font-size: 9px; }
+            td { padding: 6px; font-size: 11px; }
+            .desktop-only { display: none; }
+            .mobile-only { display: table-cell; }
+            .level { padding: 2px 6px; font-size: 10px; }
+            td:nth-child(7), th:nth-child(7) { width: 40px; text-align: center; padding: 4px; }
+            /* Hide less important columns on mobile: vs Min, Status, Date */
+            th:nth-child(6), td:nth-child(6),
+            th:nth-child(9), td:nth-child(9),
+            th:nth-child(10), td:nth-child(10) { display: none; }
+            /* Tighter columns on mobile */
+            .location { max-width: 40px; overflow: hidden; text-overflow: ellipsis; }
+            .info-icon { display: none; }
         }
     </style>
 </head>
@@ -425,8 +437,9 @@
                 <tr>
                     <th>Employer</th>
                     <th>Job Title</th>
-                    <th class="sortable" data-sort="wage_low" data-dir="desc">Range Low <span class="sort-arrow">▼</span></th>
-                    <th class="sortable" data-sort="wage_high" data-dir="">Range High <span class="sort-arrow">▼</span></th>
+                    <th class="sortable desktop-only" data-sort="wage_low" data-dir="desc">Range Low <span class="sort-arrow">▼</span></th>
+                    <th class="sortable desktop-only" data-sort="wage_high" data-dir="">Range High <span class="sort-arrow">▼</span></th>
+                    <th class="sortable mobile-only" data-sort="wage_low" data-dir="desc">$ <span class="sort-arrow">▼</span></th>
                     <th class="sortable header-info" data-sort="mult" data-dir="">vs Min <span class="sort-arrow">▼</span><span class="info-icon">(?)</span>
                         <div class="info-tooltip">
                             <strong>Wage vs Minimum</strong><br><br>
@@ -453,7 +466,7 @@
                 </tr>
             </thead>
             <tbody id="results">
-                <tr><td colspan="9" class="loading">Loading...</td></tr>
+                <tr><td colspan="10" class="loading">Loading...</td></tr>
             </tbody>
         </table>
     </div>
@@ -726,7 +739,7 @@
 
         function renderResults(data) {
             if (data.length === 0) {
-                resultsBody.innerHTML = '<tr><td colspan="9" class="empty">No results found</td></tr>';
+                resultsBody.innerHTML = '<tr><td colspan="10" class="empty">No results found</td></tr>';
                 return;
             }
 
@@ -764,11 +777,13 @@
                     : null;
                 const multClass = mult >= 1.5 ? 'mult-high' : mult >= 1.2 ? 'mult-med' : 'mult-low';
 
+                const salaryRange = wageTo !== '-' ? `${wageFrom}&nbsp;-<br>${wageTo}` : wageFrom;
                 return `<tr>
                     <td class="employer">${cleanCompany(row.EMPLOYER_NAME)}</td>
                     <td>${esc(row.JOB_TITLE)}</td>
-                    <td class="wage">${wageFrom}</td>
-                    <td class="wage">${wageTo}</td>
+                    <td class="wage desktop-only">${wageFrom}</td>
+                    <td class="wage desktop-only">${wageTo}</td>
+                    <td class="wage mobile-only">${salaryRange}</td>
                     <td class="mult ${multClass}">${mult ? mult + 'x' : '-'}</td>
                     <td><span class="level level-${levelClass}" data-tooltip="${levelTooltip}">${esc(level)}</span></td>
                     <td class="location"><span data-full="${esc(loc.full)}">${loc.short}</span></td>
