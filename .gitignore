@@ -1,0 +1,14 @@
+# Large data files (keep locally)
+*.xlsx
+*.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Local scripts (not needed for deploy)
+app.py
+convert_to_sqlite.py
+export_data.py
+*.csv
+*.pdf

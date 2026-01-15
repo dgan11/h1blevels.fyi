@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H-1B LCA Search</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .search-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .search-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .search-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .input-group.grow { flex: 1; min-width: 200px; }
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+        }
+        input, select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .multi-select {
+            position: relative;
+            width: 150px;
+        }
+        .ms-selected {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .ms-selected::after {
+            content: '▼';
+            font-size: 10px;
+            color: #999;
+            flex-shrink: 0;
+        }
+        .ms-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+            margin-top: 4px;
+            padding: 8px 0;
+            min-width: 150px;
+        }
+        #companyFilter .ms-dropdown {
+            min-width: 320px;
+        }
+        .ms-dropdown .ms-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .multi-select.open .ms-dropdown { display: block; }
+        .ms-dropdown label {
+            display: block;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            text-transform: none;
+            font-weight: normal;
+        }
+        .ms-dropdown label:hover { background: #f5f5f5; }
+        .ms-dropdown input { margin-right: 8px; }
+        .ms-actions {
+            padding: 4px 12px 8px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+        .ms-all, .ms-none {
+            color: #0066cc;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+        .ms-all:hover, .ms-none:hover { text-decoration: underline; }
+        #search {
+            font-size: 16px;
+            padding: 12px 16px;
+        }
+        .stats {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            padding-left: 16px;
+        }
+        .stats span { font-weight: 600; color: #333; }
+        table {
+            width: 100%;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #fafafa;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        tr:hover { background: #f9f9f9; }
+        .wage { font-weight: 600; color: #1a1a1a; }
+        .mult { font-weight: 600; }
+        .mult-high { color: #2e7d32; }
+        .mult-med { color: #666; }
+        .mult-low { color: #999; }
+        .level {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .level-I { background: #e3f2fd; color: #1565c0; }
+        .level-II { background: #e8f5e9; color: #2e7d32; }
+        .level-III { background: #fff3e0; color: #ef6c00; }
+        .level-IV { background: #fce4ec; color: #c2185b; }
+        .level { cursor: help; position: relative; }
+        .level:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 4px;
+        }
+        .status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .status-certified { background: #e8f5e9; color: #2e7d32; }
+        .status-denied { background: #ffebee; color: #c62828; }
+        .status-withdrawn { background: #fff3e0; color: #ef6c00; }
+        .employer { font-weight: 500; }
+        .location { color: #666; cursor: help; }
+        .location span {
+            position: relative;
+            display: inline-block;
+        }
+        .location span::after {
+            content: attr(data-full);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+        }
+        .location span:hover::after {
+            opacity: 1;
+        }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { background: #f0f0f0; }
+        .header-info { white-space: nowrap; }
+        th.header-info { position: sticky; top: 0; z-index: 10; background: #fafafa; }
+        .header-info .info-icon {
+            display: inline;
+            font-size: 9px;
+            color: #999;
+            margin-left: 2px;
+            cursor: help;
+        }
+        .header-info .info-tooltip {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #333;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            width: 340px;
+            z-index: 200;
+            margin-top: 8px;
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: normal;
+            line-height: 1.5;
+            white-space: normal;
+        }
+        .header-info:hover .info-tooltip { display: block; }
+        .suggestions {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+            margin-top: 4px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .suggestions.open { display: block; }
+        .suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .suggestion:last-child { border-bottom: none; }
+        .suggestion:hover, .suggestion.selected { background: #f5f5f5; }
+        .suggestion-type {
+            font-size: 10px;
+            color: #999;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+        .sort-arrow { font-size: 10px; margin-left: 2px; opacity: 0.5; display: inline; }
+        .sortable[data-dir="asc"] .sort-arrow,
+        .sortable[data-dir="desc"] .sort-arrow { opacity: 1; }
+        @media (max-width: 768px) {
+            .input-group { width: 100%; }
+            th, td { padding: 8px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>H-1B LCA Search</h1>
+        <p class="subtitle">Legally required salary filings from AI startups and high-growth tech. More accurate than self-reported data. Companies must certify these wages with the DOL.</p>
+
+        <div class="search-box">
+            <div class="search-row">
+                <div class="input-group grow" style="position: relative;">
+                    <label>Search</label>
+                    <input type="text" id="search" placeholder="Company or job title..." autofocus autocomplete="off">
+                    <div id="suggestions" class="suggestions"></div>
+                </div>
+                <div class="input-group">
+                    <label>Company</label>
+                    <div class="multi-select" id="companyFilter">
+                        <div class="ms-selected">All</div>
+                        <div class="ms-dropdown">
+                            <div class="ms-actions"><span class="ms-all">All</span> <span class="ms-none">Clear</span></div>
+                            <div class="ms-options">
+                                <label><input type="checkbox" value="anysphere" checked> Cursor</label>
+                                <label><input type="checkbox" value="anthropic" checked> Anthropic</label>
+                                <label><input type="checkbox" value="brex" checked> Brex</label>
+                                <label><input type="checkbox" value="character" checked> Character</label>
+                                <label><input type="checkbox" value="cohere" checked> Cohere</label>
+                                <label><input type="checkbox" value="coinbase" checked> Coinbase</label>
+                                <label><input type="checkbox" value="databricks" checked> Databricks</label>
+                                <label><input type="checkbox" value="datadog" checked> Datadog</label>
+                                <label><input type="checkbox" value="decagon" checked> Decagon</label>
+                                <label><input type="checkbox" value="discord" checked> Discord</label>
+                                <label><input type="checkbox" value="doordash" checked> DoorDash</label>
+                                <label><input type="checkbox" value="eleven labs" checked> Eleven Labs</label>
+                                <label><input type="checkbox" value="figma" checked> Figma</label>
+                                <label><input type="checkbox" value="glean" checked> Glean</label>
+                                <label><input type="checkbox" value="gong" checked> Gong</label>
+                                <label><input type="checkbox" value="harvey ai" checked> Harvey</label>
+                                <label><input type="checkbox" value="hugging face" checked> Hugging Face</label>
+                                <label><input type="checkbox" value="langchain" checked> LangChain</label>
+                                <label><input type="checkbox" value="luma" checked> Luma</label>
+                                <label><input type="checkbox" value="mercor" checked> Mercor</label>
+                                <label><input type="checkbox" value="mercury" checked> Mercury</label>
+                                <label><input type="checkbox" value="mistral" checked> Mistral</label>
+                                <label><input type="checkbox" value="notion" checked> Notion</label>
+                                <label><input type="checkbox" value="openai" checked> OpenAI</label>
+                                <label><input type="checkbox" value="palantir" checked> Palantir</label>
+                                <label><input type="checkbox" value="perplexity" checked> Perplexity</label>
+                                <label><input type="checkbox" value="physical intelligence" checked> Physical Intelligence</label>
+                                <label><input type="checkbox" value="plaid" checked> Plaid</label>
+                                <label><input type="checkbox" value="ramp" checked> Ramp</label>
+                                <label><input type="checkbox" value="replit" checked> Replit</label>
+                                <label><input type="checkbox" value="retool" checked> Retool</label>
+                                <label><input type="checkbox" value="rippling" checked> Rippling</label>
+                                <label><input type="checkbox" value="robinhood" checked> Robinhood</label>
+                                <label><input type="checkbox" value="runway" checked> Runway</label>
+                                <label><input type="checkbox" value="scale ai" checked> Scale AI</label>
+                                <label><input type="checkbox" value="snap" checked> Snap</label>
+                                <label><input type="checkbox" value="stripe" checked> Stripe</label>
+                                <label><input type="checkbox" value="thinking machines" checked> Thinking Machines</label>
+                                <label><input type="checkbox" value="vercel" checked> Vercel</label>
+                                <label><input type="checkbox" value="waymo" checked> Waymo</label>
+                                <label><input type="checkbox" value="x." checked> xAI</label>
+                                <label><input type="checkbox" value="snorkel" checked> Snorkel AI</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Level</label>
+                    <div class="multi-select" id="levelFilter">
+                        <div class="ms-selected">All</div>
+                        <div class="ms-dropdown">
+                            <div class="ms-actions"><span class="ms-all">All</span> <span class="ms-none">Clear</span></div>
+                            <label><input type="checkbox" value="I" checked> I</label>
+                            <label><input type="checkbox" value="II" checked> II</label>
+                            <label><input type="checkbox" value="III" checked> III</label>
+                            <label><input type="checkbox" value="IV" checked> IV</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Status</label>
+                    <div class="multi-select" id="statusFilter">
+                        <div class="ms-selected">All</div>
+                        <div class="ms-dropdown">
+                            <div class="ms-actions"><span class="ms-all">All</span> <span class="ms-none">Clear</span></div>
+                            <label><input type="checkbox" value="Certified" checked> Approved</label>
+                            <label><input type="checkbox" value="Withdrawn" checked> Withdrawn</label>
+                            <label><input type="checkbox" value="Denied" checked> Denied</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Employer</th>
+                    <th>Job Title</th>
+                    <th class="sortable" data-sort="wage_low" data-dir="desc">Range Low <span class="sort-arrow">▼</span></th>
+                    <th class="sortable" data-sort="wage_high" data-dir="">Range High <span class="sort-arrow">▼</span></th>
+                    <th class="sortable header-info" data-sort="mult" data-dir="">vs Min <span class="sort-arrow">▼</span><span class="info-icon">(?)</span>
+                        <div class="info-tooltip">
+                            <strong>Wage vs Minimum</strong><br><br>
+                            Shows how much above the DOL required minimum (prevailing wage) the company is actually paying.<br><br>
+                            <strong>1.0x</strong> = paying exactly the minimum<br>
+                            <strong>2.0x</strong> = paying double the minimum<br>
+                            <strong>3.0x</strong> = paying triple the minimum<br><br>
+                            <em>Higher multipliers</em> suggest the company is being more generous relative to what's legally required.
+                        </div>
+                    </th>
+                    <th class="sortable header-info" data-sort="level" data-dir="">Level <span class="sort-arrow">▼</span><span class="info-icon">(?)</span>
+                        <div class="info-tooltip">
+                            <strong>DOL Wage Levels</strong><br><br>
+                            <strong>Level I</strong> (17th %ile) - Entry-level, closely supervised<br>
+                            <strong>Level II</strong> (34th %ile) - Qualified, limited judgment<br>
+                            <strong>Level III</strong> (50th %ile) - Experienced, independent<br>
+                            <strong>Level IV</strong> (67th %ile) - Expert, supervisory<br><br>
+                            <em>Note:</em> The level reflects the job description filed, not actual pay. A Level II with $490K salary means they're paying 3x the required minimum - the level doesn't mean "junior."
+                        </div>
+                    </th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th class="sortable" data-sort="date" data-dir="">Date <span class="sort-arrow">▼</span></th>
+                </tr>
+            </thead>
+            <tbody id="results">
+                <tr><td colspan="9" class="loading">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('search');
+        const resultsBody = document.getElementById('results');
+        const statsDiv = document.getElementById('stats');
+
+        let debounceTimer;
+        let allData = [];
+        let currentData = [];
+        let currentSort = { col: 'wage_low', dir: 'desc' };
+
+        // Multi-select setup
+        document.querySelectorAll('.multi-select').forEach(ms => {
+            const selected = ms.querySelector('.ms-selected');
+            const dropdown = ms.querySelector('.ms-dropdown');
+            const checkboxes = ms.querySelectorAll('input[type="checkbox"]');
+            const allBtn = ms.querySelector('.ms-all');
+            const noneBtn = ms.querySelector('.ms-none');
+
+            selected.addEventListener('click', (e) => {
+                document.querySelectorAll('.multi-select').forEach(m => {
+                    if (m !== ms) m.classList.remove('open');
+                });
+                ms.classList.toggle('open');
+                e.stopPropagation();
+            });
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    updateSelectedText(ms);
+                    filterAndRender();
+                });
+                cb.addEventListener('click', e => e.stopPropagation());
+            });
+
+            dropdown.addEventListener('click', e => e.stopPropagation());
+
+            allBtn.addEventListener('click', () => {
+                checkboxes.forEach(cb => cb.checked = true);
+                updateSelectedText(ms);
+                filterAndRender();
+            });
+
+            noneBtn.addEventListener('click', () => {
+                checkboxes.forEach(cb => cb.checked = false);
+                updateSelectedText(ms);
+                filterAndRender();
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.multi-select').forEach(m => m.classList.remove('open'));
+        });
+
+        function updateSelectedText(ms) {
+            const checkboxes = ms.querySelectorAll('input[type="checkbox"]');
+            const checked = ms.querySelectorAll('input[type="checkbox"]:checked');
+            const selected = ms.querySelector('.ms-selected');
+            if (checked.length === 0) selected.textContent = 'None';
+            else if (checked.length === checkboxes.length) selected.textContent = 'All';
+            else selected.textContent = checked.length + ' selected';
+        }
+
+        function getFilterValues(id) {
+            const ms = document.getElementById(id);
+            return Array.from(ms.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        }
+
+        loadData();
+
+        function debounce(fn, ms) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fn, ms);
+        }
+
+        const suggestionsDiv = document.getElementById('suggestions');
+
+        searchInput.addEventListener('input', () => {
+            filterAndRender();
+            showSuggestions();
+        });
+
+        searchInput.addEventListener('focus', showSuggestions);
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#search') && !e.target.closest('#suggestions')) {
+                suggestionsDiv.classList.remove('open');
+            }
+        });
+
+        let selectedIndex = -1;
+
+        searchInput.addEventListener('keydown', (e) => {
+            const suggestions = suggestionsDiv.querySelectorAll('.suggestion');
+
+            if (e.key === 'Escape') {
+                suggestionsDiv.classList.remove('open');
+                selectedIndex = -1;
+                searchInput.blur();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (suggestions.length > 0) {
+                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+                    updateSelectedSuggestion(suggestions);
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (suggestions.length > 0) {
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateSelectedSuggestion(suggestions);
+                }
+            } else if (e.key === 'Enter') {
+                if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+                    e.preventDefault();
+                    searchInput.value = suggestions[selectedIndex].dataset.value;
+                    suggestionsDiv.classList.remove('open');
+                    selectedIndex = -1;
+                    filterAndRender();
+                }
+            }
+        });
+
+        function updateSelectedSuggestion(suggestions) {
+            suggestions.forEach((s, i) => {
+                s.classList.toggle('selected', i === selectedIndex);
+            });
+            if (suggestions[selectedIndex]) {
+                suggestions[selectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function showSuggestions() {
+            const q = searchInput.value.toLowerCase().trim();
+            selectedIndex = -1;
+            if (q.length < 2) {
+                suggestionsDiv.classList.remove('open');
+                return;
+            }
+
+            // Get unique job titles and companies that match
+            const jobTitles = new Set();
+            const companies = new Set();
+
+            allData.forEach(row => {
+                if (row.JOB_TITLE?.toLowerCase().includes(q)) {
+                    jobTitles.add(row.JOB_TITLE);
+                }
+                const cleanName = cleanCompany(row.EMPLOYER_NAME);
+                if (cleanName.toLowerCase().includes(q)) {
+                    companies.add(cleanName);
+                }
+            });
+
+            const suggestions = [];
+            // Add companies first (limit 3)
+            [...companies].slice(0, 3).forEach(c => {
+                suggestions.push({ text: c, type: 'company' });
+            });
+            // Add job titles (limit 5)
+            [...jobTitles].slice(0, 5).forEach(j => {
+                suggestions.push({ text: j, type: 'job' });
+            });
+
+            if (suggestions.length === 0) {
+                suggestionsDiv.classList.remove('open');
+                return;
+            }
+
+            suggestionsDiv.innerHTML = suggestions.map(s =>
+                `<div class="suggestion" data-value="${esc(s.text)}">${esc(s.text)}<span class="suggestion-type">${s.type}</span></div>`
+            ).join('');
+            suggestionsDiv.classList.add('open');
+
+            // Add click handlers
+            suggestionsDiv.querySelectorAll('.suggestion').forEach(el => {
+                el.addEventListener('click', () => {
+                    searchInput.value = el.dataset.value;
+                    suggestionsDiv.classList.remove('open');
+                    filterAndRender();
+                });
+            });
+        }
+
+        // Sortable columns
+        document.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                const currentDir = th.dataset.dir;
+                const newDir = currentDir === 'desc' ? 'asc' : 'desc';
+
+                // Reset all arrows
+                document.querySelectorAll('.sortable').forEach(t => {
+                    t.dataset.dir = '';
+                    t.querySelector('.sort-arrow').textContent = '▼';
+                });
+
+                // Set new sort
+                th.dataset.dir = newDir;
+                th.querySelector('.sort-arrow').textContent = newDir === 'asc' ? '▲' : '▼';
+                currentSort = { col, dir: newDir };
+
+                sortAndRender();
+            });
+        });
+
+        async function loadData() {
+            const start = performance.now();
+            const res = await fetch('data.json');
+            allData = await res.json();
+            const elapsed = (performance.now() - start).toFixed(0);
+            console.log(`Loaded ${allData.length} records in ${elapsed}ms`);
+
+            filterAndRender();
+        }
+
+        function filterAndRender() {
+            const search = searchInput.value.toLowerCase();
+            const companies = getFilterValues('companyFilter');
+            const levels = getFilterValues('levelFilter');
+            const statuses = getFilterValues('statusFilter').map(s => s.toLowerCase());
+
+            currentData = allData.filter(row => {
+                const cleanedName = cleanCompany(row.EMPLOYER_NAME).toLowerCase();
+                if (search && !row.JOB_TITLE?.toLowerCase().includes(search) && !row.EMPLOYER_NAME?.toLowerCase().includes(search) && !cleanedName.includes(search)) return false;
+                if (companies.length && !companies.some(c => row.EMPLOYER_NAME?.toLowerCase().includes(c))) return false;
+                if (levels.length && !levels.includes(row.PW_WAGE_LEVEL)) return false;
+                if (statuses.length && !statuses.some(s => row.CASE_STATUS?.toLowerCase().includes(s))) return false;
+                return true;
+            });
+
+            statsDiv.innerHTML = `<span>${currentData.length}</span> results`;
+            sortAndRender();
+        }
+
+        function sortAndRender() {
+            const { col, dir } = currentSort;
+            const sortMult = dir === 'asc' ? 1 : -1;
+
+            currentData.sort((a, b) => {
+                let va, vb;
+                if (col === 'wage_low') {
+                    va = getCorrectedAnnualWage(a) || 0;
+                    vb = getCorrectedAnnualWage(b) || 0;
+                } else if (col === 'wage_high') {
+                    va = getCorrectedAnnualWageTo(a) || 0;
+                    vb = getCorrectedAnnualWageTo(b) || 0;
+                } else if (col === 'mult') {
+                    const wa = getCorrectedAnnualWage(a);
+                    const wb = getCorrectedAnnualWage(b);
+                    const pa = getCorrectedPrevailingWage(a);
+                    const pb = getCorrectedPrevailingWage(b);
+                    va = (wa && pa) ? wa / pa : 0;
+                    vb = (wb && pb) ? wb / pb : 0;
+                } else if (col === 'level') {
+                    const lvl = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+                    va = lvl[a.PW_WAGE_LEVEL] || 0;
+                    vb = lvl[b.PW_WAGE_LEVEL] || 0;
+                } else if (col === 'date') {
+                    va = new Date(a.RECEIVED_DATE || 0).getTime();
+                    vb = new Date(b.RECEIVED_DATE || 0).getTime();
+                }
+                return (va - vb) * sortMult;
+            });
+
+            renderResults(currentData);
+        }
+
+        function renderResults(data) {
+            if (data.length === 0) {
+                resultsBody.innerHTML = '<tr><td colspan="9" class="empty">No results found</td></tr>';
+                return;
+            }
+
+            resultsBody.innerHTML = data.map(row => {
+                const level = row.PW_WAGE_LEVEL || '';
+                const levelClass = level.replace(' ', '-');
+                const levelTooltip = {
+                    'I': 'Entry level, close supervision (17th percentile)',
+                    'II': 'Qualified, limited judgment (34th percentile)',
+                    'III': 'Experienced, independent (50th percentile)',
+                    'IV': 'Expert, supervisory (67th percentile)'
+                }[level] || '';
+                let status = row.CASE_STATUS || '';
+                const statusClass = status.toLowerCase().includes('denied') ? 'denied'
+                    : status.toLowerCase().includes('withdrawn') ? 'withdrawn' : 'certified';
+                if (status.toLowerCase().includes('certified')) status = 'Approved';
+                if (status.toLowerCase().includes('withdrawn')) status = 'Withdrawn';
+                if (status.toLowerCase().includes('denied')) status = 'Denied';
+                const date = formatDate(row.RECEIVED_DATE);
+                const loc = shortCity(row.WORKSITE_CITY);
+
+                let annualFrom = getCorrectedAnnualWage(row);
+                let annualTo = getCorrectedAnnualWageTo(row);
+                // If low > high after conversion, it's a data entry error - use raw values
+                if (annualFrom && annualTo && annualFrom > annualTo) {
+                    annualFrom = row.WAGE_RATE_OF_PAY_FROM;
+                    annualTo = row.WAGE_RATE_OF_PAY_TO;
+                }
+                const wageFrom = annualFrom ? formatMoney(annualFrom) : '-';
+                const wageTo = annualTo ? formatMoney(annualTo) : '-';
+
+                const prevailingAnnual = getCorrectedPrevailingWage(row);
+                const mult = prevailingAnnual && annualFrom
+                    ? (annualFrom / prevailingAnnual).toFixed(1)
+                    : null;
+                const multClass = mult >= 1.5 ? 'mult-high' : mult >= 1.2 ? 'mult-med' : 'mult-low';
+
+                return `<tr>
+                    <td class="employer">${cleanCompany(row.EMPLOYER_NAME)}</td>
+                    <td>${esc(row.JOB_TITLE)}</td>
+                    <td class="wage">${wageFrom}</td>
+                    <td class="wage">${wageTo}</td>
+                    <td class="mult ${multClass}">${mult ? mult + 'x' : '-'}</td>
+                    <td><span class="level level-${levelClass}" data-tooltip="${levelTooltip}">${esc(level)}</span></td>
+                    <td class="location"><span data-full="${esc(loc.full)}">${loc.short}</span></td>
+                    <td><span class="status status-${statusClass}">${esc(status)}</span></td>
+                    <td>${date}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function formatWageRange(from, to, unit) {
+            if (!from) return '-';
+            // Detect likely data entry errors: if wage looks annual but unit says Month/Week
+            // (e.g., $132,954/month is likely meant to be /year)
+            let correctedUnit = unit;
+            if (unit === 'Month' && from > 10000) correctedUnit = 'Year';
+            if (unit === 'Week' && from > 2500) correctedUnit = 'Year';
+            if (unit === 'Hour' && from > 500) correctedUnit = 'Year';
+
+            const unitSuffix = correctedUnit && correctedUnit !== 'Year' ? `/${correctedUnit.toLowerCase().replace('bi-weekly','bi-wk')}` : '/yr';
+            const f = formatMoney(from);
+            if (to && to !== from) return `${f} - ${formatMoney(to)}${unitSuffix}`;
+            return f + unitSuffix;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d)) return '';
+            return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`;
+        }
+
+        function getCorrectedAnnualWage(row) {
+            const wage = row.WAGE_RATE_OF_PAY_FROM;
+            const unit = row.WAGE_UNIT_OF_PAY;
+            if (!wage) return null;
+            const annual = toAnnual(wage, unit);
+            // Detect data entry errors (if annual > $1M but raw wage looks annual, assume unit was wrong)
+            if (annual > 1000000 && wage > 50000 && wage < 1000000) return wage;
+            // Detect 10x errors (e.g., $2M for Level II - should be $200k)
+            const level = row.PW_WAGE_LEVEL;
+            if (annual > 1000000 && (level === 'I' || level === 'II')) return annual / 10;
+            return annual;
+        }
+
+        function getCorrectedAnnualWageTo(row) {
+            const wage = row.WAGE_RATE_OF_PAY_TO;
+            const unit = row.WAGE_UNIT_OF_PAY;
+            if (!wage) return null;
+            const annual = toAnnual(wage, unit);
+            // Detect data entry errors
+            if (annual > 1000000 && wage > 50000 && wage < 1000000) return wage;
+            // Detect 10x errors (e.g., $2M for Level II - should be $200k)
+            const level = row.PW_WAGE_LEVEL;
+            if (annual > 1000000 && (level === 'I' || level === 'II')) return annual / 10;
+            return annual;
+        }
+
+        function getCorrectedPrevailingWage(row) {
+            const wage = row.PREVAILING_WAGE;
+            const unit = row.WAGE_UNIT_OF_PAY;
+            if (!wage) return null;
+            const annual = toAnnual(wage, unit);
+            // Detect data entry errors (same logic as offered wage)
+            if (annual > 1000000 && wage > 50000 && wage < 1000000) return wage;
+            return annual;
+        }
+
+        function cleanCompany(name) {
+            if (!name) return '';
+            const n = name.toLowerCase();
+            if (n.includes('anysphere')) return 'Cursor';
+            if (n.includes('openai')) return 'OpenAI';
+            if (n.includes('anthropic')) return 'Anthropic';
+            if (n.includes('mercor')) return 'Mercor';
+            if (n.includes('harvey ai')) return 'Harvey';
+            if (n.includes('scale ai')) return 'Scale AI';
+            if (n.includes('databricks')) return 'Databricks';
+            if (n.includes('waymo')) return 'Waymo';
+            if (n.includes('palantir')) return 'Palantir';
+            if (n.includes('figma')) return 'Figma';
+            if (n.includes('notion')) return 'Notion';
+            if (n.includes('perplexity')) return 'Perplexity';
+            if (n.includes('ramp')) return 'Ramp';
+            if (n.includes('brex')) return 'Brex';
+            if (n.includes('physical intelligence')) return 'Physical Intelligence';
+            if (n.includes('thinking machines')) return 'Thinking Machines';
+            if (n.includes('decagon')) return 'Decagon';
+            if (n.includes('gong')) return 'Gong';
+            if (n.includes('mistral')) return 'Mistral';
+            if (n.includes('langchain')) return 'LangChain';
+            if (n.includes('glean')) return 'Glean';
+            if (n.includes('replit')) return 'Replit';
+            if (n.includes('luma')) return 'Luma';
+            if (n.includes('eleven labs')) return 'Eleven Labs';
+            if (n.includes('hugging face')) return 'Hugging Face';
+            if (n.includes('cohere')) return 'Cohere';
+            if (n.includes('robinhood')) return 'Robinhood';
+            if (n.includes('stripe')) return 'Stripe';
+            if (n.includes('snap inc')) return 'Snap';
+            if (n.includes('vercel')) return 'Vercel';
+            if (n.includes('plaid')) return 'Plaid';
+            if (n.includes('mercury technologies')) return 'Mercury';
+            if (n.includes('discord')) return 'Discord';
+            if (n.includes('retool')) return 'Retool';
+            if (n.includes('runway')) return 'Runway';
+            if (n.includes('character')) return 'Character';
+            if (n.includes('doordash')) return 'DoorDash';
+            if (n.includes('coinbase')) return 'Coinbase';
+            if (n.includes('rippling')) return 'Rippling';
+            if (n.includes('datadog')) return 'Datadog';
+            if (n.includes('x. ai') || n.includes('x.ai')) return 'xAI';
+            if (n.includes('snorkel')) return 'Snorkel AI';
+            return name;
+        }
+
+        function shortCity(city) {
+            if (!city) return { short: '', full: '' };
+            const shorts = {
+                // SF Bay Area → SF
+                'san francisco': 'SF',
+                'mountain view': 'SF',
+                'palo alto': 'SF',
+                'sunnyvale': 'SF',
+                'menlo park': 'SF',
+                'cupertino': 'SF',
+                'santa clara': 'SF',
+                'san jose': 'SF',
+                'fremont': 'SF',
+                'redwood city': 'SF',
+                // NYC Area → NYC
+                'new york': 'NYC',
+                'brooklyn': 'NYC',
+                'jersey city': 'NYC',
+                // Other major cities
+                'los angeles': 'LA',
+                'san diego': 'SD',
+                'seattle': 'SEA',
+                'boston': 'BOS',
+                'cambridge': 'BOS',
+                'chicago': 'CHI',
+                'austin': 'ATX',
+                'denver': 'DEN',
+                'atlanta': 'ATL',
+                'dallas': 'DAL',
+                'houston': 'HOU',
+                'philadelphia': 'PHL',
+                'phoenix': 'PHX',
+                'portland': 'PDX',
+                'washington': 'DC',
+                'miami': 'MIA',
+                'redmond': 'SEA',
+                'bellevue': 'SEA'
+            };
+            const short = shorts[city.toLowerCase()] || city;
+            return { short, full: city };
+        }
+
+        function formatMoney(n) {
+            if (!n) return '-';
+            if (n >= 1000000) {
+                return '$' + (n / 1000000).toFixed(1) + 'M';
+            }
+            if (n >= 1000) {
+                return '$' + (n / 1000).toFixed(0) + 'k';
+            }
+            return '$' + Math.round(n);
+        }
+
+        function toAnnual(wage, unit) {
+            if (!wage) return null;
+            if (unit === 'Hour') return wage * 2080;
+            if (unit === 'Week') return wage * 52;
+            if (unit === 'Bi-Weekly') return wage * 26;
+            if (unit === 'Month') return wage * 12;
+            return wage;
+        }
+
+        function esc(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    </script>
+</body>
+</html>
