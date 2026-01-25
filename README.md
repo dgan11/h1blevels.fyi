@@ -18,19 +18,18 @@ This data is more accurate than other salary sites that rely on self-reporting. 
 
 ## Deployment (CI/CD)
 
-This repo is a static site. CI/CD is configured to deploy to Cloudflare Pages.
+This repo is a static site. CI/CD is configured to deploy to Vercel.
 
-- **Production:** the branch set as the Cloudflare Pages "Production branch" (typically `main`).
+- **Production:** the `main` branch deploys to production.
 - **Previews:** every other branch push gets a preview URL to test PRs before merging.
 
 ### Setup
 
-1. Create a Cloudflare Pages project for this repo.
-2. Set the production branch in Cloudflare (for example, `main`).
-3. Add these GitHub repo secrets:
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-   - `CLOUDFLARE_PAGES_PROJECT` (your Pages project name)
-4. Push any branch and use the preview URL shown in:
-   - **Cloudflare Pages** dashboard, or
+1. Create a Vercel project for this repo.
+2. Add these GitHub repo secrets:
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+3. Push any branch and use the preview URL shown in:
+   - **Vercel** dashboard, or
    - **GitHub Deployments** on the commit/PR.
