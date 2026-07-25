@@ -9,12 +9,13 @@ This data is more accurate than other salary sites that rely on self-reporting. 
 ## Data
 
 - **Source:** [DOL OFLC LCA Disclosure Files](https://www.dol.gov/agencies/eta/foreign-labor/performance)
-- **Range:** Oct 2024 – Sep 2025 (FY2025 Q4)
-- **Records:** 751 filings
+- **Releases:** FY2025 Q4 and FY2026 Q2
+- **Determinations:** Oct 2024 – Mar 2026
+- **Records:** 2,333 filings
 
 ## Companies
 
-40 AI-native and high-growth tech companies including Cursor, Anthropic, OpenAI, Databricks, and more.
+42 AI-native and high-growth tech companies including Cursor, Anthropic, OpenAI, Databricks, and more.
 
 ## Deployment (CI/CD)
 
