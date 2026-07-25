@@ -25,8 +25,14 @@
         .subtitle {
             font-size: 14px;
             color: #666;
+            margin-bottom: 4px;
+        }
+        .source {
+            font-size: 12px;
+            color: #777;
             margin-bottom: 20px;
         }
+        .source a { color: #0066cc; }
         .search-box {
             background: #fff;
             padding: 20px;
@@ -341,6 +347,7 @@
     <div class="container">
         <h1>H-1B LCA Search</h1>
         <p class="subtitle">Legally required salary filings from AI startups and high-growth tech. More accurate than self-reported data. Companies must certify these wages with the DOL.</p>
+        <p class="source">Source: <a href="https://www.dol.gov/agencies/eta/foreign-labor/performance" target="_blank" rel="noopener noreferrer">U.S. Department of Labor OFLC LCA Disclosure Data</a> (FY2025 Q4 and FY2026 Q2).</p>
 
         <div class="search-box">
             <div class="search-row">
@@ -348,6 +355,12 @@
                     <label>Search</label>
                     <input type="text" id="search" placeholder="Company or job title..." autofocus autocomplete="off">
                     <div id="suggestions" class="suggestions"></div>
+                </div>
+                <div class="input-group">
+                    <label for="roleFilter">Role</label>
+                    <select id="roleFilter">
+                        <option value="">All roles</option>
+                    </select>
                 </div>
                 <div class="input-group">
                     <label>Company</label>
@@ -473,6 +486,7 @@
 
     <script>
         const searchInput = document.getElementById('search');
+        const roleFilter = document.getElementById('roleFilter');
         const resultsBody = document.getElementById('results');
         const statsDiv = document.getElementById('stats');
 
@@ -551,6 +565,7 @@
             filterAndRender();
             showSuggestions();
         });
+        roleFilter.addEventListener('change', filterAndRender);
 
         searchInput.addEventListener('focus', showSuggestions);
 
@@ -682,11 +697,24 @@
             const elapsed = (performance.now() - start).toFixed(0);
             console.log(`Loaded ${allData.length} records in ${elapsed}ms`);
 
+            populateRoleFilter();
             filterAndRender();
+        }
+
+        function populateRoleFilter() {
+            const roles = [...new Set(allData.map(row => row.JOB_TITLE).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b));
+            roles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role;
+                roleFilter.appendChild(option);
+            });
         }
 
         function filterAndRender() {
             const search = searchInput.value.toLowerCase();
+            const role = roleFilter.value;
             const companies = getFilterValues('companyFilter');
             const levels = getFilterValues('levelFilter');
             const statuses = getFilterValues('statusFilter').map(s => s.toLowerCase());
@@ -694,6 +722,7 @@
             currentData = allData.filter(row => {
                 const cleanedName = cleanCompany(row.EMPLOYER_NAME).toLowerCase();
                 if (search && !row.JOB_TITLE?.toLowerCase().includes(search) && !row.EMPLOYER_NAME?.toLowerCase().includes(search) && !cleanedName.includes(search)) return false;
+                if (role && row.JOB_TITLE !== role) return false;
                 if (companies.length && !companies.some(c => row.EMPLOYER_NAME?.toLowerCase().includes(c))) return false;
                 if (levels.length && !levels.includes(row.PW_WAGE_LEVEL)) return false;
                 if (statuses.length && !statuses.some(s => row.CASE_STATUS?.toLowerCase().includes(s))) return false;
