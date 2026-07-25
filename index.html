@@ -59,7 +59,7 @@
         }
         .input-group.grow { flex: 1 1 300px; min-width: 300px; }
         .input-group.role-filter { flex: 0 1 220px; min-width: 160px; }
-        .input-group.role-filter select { width: 100%; min-width: 0; }
+        .input-group.role-filter .multi-select { width: 100%; min-width: 0; }
         .input-group.compact-filter { flex: 0 0 95px; }
         .input-group.compact-filter .multi-select { width: 100%; min-width: 0; }
         label {
@@ -117,6 +117,14 @@
         }
         #companyFilter .ms-dropdown {
             min-width: 320px;
+        }
+        #roleFilter .ms-dropdown {
+            left: 0;
+            right: auto;
+            min-width: 320px;
+        }
+        #roleFilter .ms-options {
+            display: block;
         }
         .ms-dropdown .ms-options {
             display: grid;
@@ -364,10 +372,14 @@
                     <div id="suggestions" class="suggestions"></div>
                 </div>
                 <div class="input-group role-filter">
-                    <label for="roleFilter">Role</label>
-                    <select id="roleFilter">
-                        <option value="">All roles</option>
-                    </select>
+                    <label>Role</label>
+                    <div class="multi-select" id="roleFilter">
+                        <div class="ms-selected">All</div>
+                        <div class="ms-dropdown">
+                            <div class="ms-actions"><span class="ms-all">All</span> <span class="ms-none">Clear</span></div>
+                            <div class="ms-options"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="input-group compact-filter">
                     <label>Company</label>
@@ -511,7 +523,6 @@
         document.querySelectorAll('.multi-select').forEach(ms => {
             const selected = ms.querySelector('.ms-selected');
             const dropdown = ms.querySelector('.ms-dropdown');
-            const checkboxes = ms.querySelectorAll('input[type="checkbox"]');
             const allBtn = ms.querySelector('.ms-all');
             const noneBtn = ms.querySelector('.ms-none');
 
@@ -523,25 +534,27 @@
                 e.stopPropagation();
             });
 
-            checkboxes.forEach(cb => {
-                cb.addEventListener('change', () => {
+            dropdown.addEventListener('change', (e) => {
+                if (e.target.matches('input[type="checkbox"]')) {
                     updateSelectedText(ms);
+                    if (ms.id === 'companyFilter') updateRoleOptions();
                     filterAndRender();
-                });
-                cb.addEventListener('click', e => e.stopPropagation());
+                }
             });
 
             dropdown.addEventListener('click', e => e.stopPropagation());
 
             allBtn.addEventListener('click', () => {
-                checkboxes.forEach(cb => cb.checked = true);
+                ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
                 updateSelectedText(ms);
+                if (ms.id === 'companyFilter') updateRoleOptions();
                 filterAndRender();
             });
 
             noneBtn.addEventListener('click', () => {
-                checkboxes.forEach(cb => cb.checked = false);
+                ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                 updateSelectedText(ms);
+                if (ms.id === 'companyFilter') updateRoleOptions();
                 filterAndRender();
             });
         });
@@ -559,11 +572,6 @@
             else selected.textContent = checked.length + ' selected';
         }
 
-        function getFilterValues(id) {
-            const ms = document.getElementById(id);
-            return Array.from(ms.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-        }
-
         loadData();
 
         function debounce(fn, ms) {
@@ -574,10 +582,10 @@
         const suggestionsDiv = document.getElementById('suggestions');
 
         searchInput.addEventListener('input', () => {
+            updateRoleOptions();
             filterAndRender();
             showSuggestions();
         });
-        roleFilter.addEventListener('change', filterAndRender);
 
         searchInput.addEventListener('focus', showSuggestions);
 
@@ -614,6 +622,7 @@
                     searchInput.value = suggestions[selectedIndex].dataset.value;
                     suggestionsDiv.classList.remove('open');
                     selectedIndex = -1;
+                    updateRoleOptions();
                     filterAndRender();
                 }
             }
@@ -675,6 +684,7 @@
                 el.addEventListener('click', () => {
                     searchInput.value = el.dataset.value;
                     suggestionsDiv.classList.remove('open');
+                    updateRoleOptions();
                     filterAndRender();
                 });
             });
@@ -709,35 +719,65 @@
             const elapsed = (performance.now() - start).toFixed(0);
             console.log(`Loaded ${allData.length} records in ${elapsed}ms`);
 
-            populateRoleFilter();
+            updateRoleOptions();
             filterAndRender();
         }
 
-        function populateRoleFilter() {
-            const roles = [...new Set(allData.map(row => row.JOB_TITLE).filter(Boolean))]
+        function matchesSearch(row, search) {
+            if (!search) return true;
+            const cleanedName = cleanCompany(row.EMPLOYER_NAME).toLowerCase();
+            return row.JOB_TITLE?.toLowerCase().includes(search)
+                || row.EMPLOYER_NAME?.toLowerCase().includes(search)
+                || cleanedName.includes(search);
+        }
+
+        function matchesMultiSelect(id, predicate) {
+            const checkboxes = Array.from(document.querySelectorAll(`#${id} input[type="checkbox"]`));
+            const checked = checkboxes.filter(cb => cb.checked);
+            if (checkboxes.length === 0 || checked.length === 0) return false;
+            if (checked.length === checkboxes.length) return true;
+            return checked.some(cb => predicate(cb.value));
+        }
+
+        function updateRoleOptions() {
+            const options = roleFilter.querySelector('.ms-options');
+            const existing = Array.from(options.querySelectorAll('input[type="checkbox"]'));
+            const allWereSelected = existing.length === 0 || existing.every(cb => cb.checked);
+            const selectedRoles = new Set(existing.filter(cb => cb.checked).map(cb => cb.value));
+            const search = searchInput.value.toLowerCase();
+
+            const roles = [...new Set(allData
+                .filter(row => matchesSearch(row, search))
+                .filter(row => matchesMultiSelect('companyFilter',
+                    company => row.EMPLOYER_NAME?.toLowerCase().includes(company)))
+                .map(row => row.JOB_TITLE)
+                .filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b));
+
+            options.replaceChildren();
             roles.forEach(role => {
-                const option = document.createElement('option');
-                option.value = role;
-                option.textContent = role;
-                roleFilter.appendChild(option);
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = role;
+                checkbox.checked = allWereSelected || selectedRoles.has(role);
+                label.append(checkbox, document.createTextNode(' ' + role));
+                options.appendChild(label);
             });
+            updateSelectedText(roleFilter);
         }
 
         function filterAndRender() {
             const search = searchInput.value.toLowerCase();
-            const role = roleFilter.value;
-            const companies = getFilterValues('companyFilter');
-            const levels = getFilterValues('levelFilter');
-            const statuses = getFilterValues('statusFilter').map(s => s.toLowerCase());
 
             currentData = allData.filter(row => {
-                const cleanedName = cleanCompany(row.EMPLOYER_NAME).toLowerCase();
-                if (search && !row.JOB_TITLE?.toLowerCase().includes(search) && !row.EMPLOYER_NAME?.toLowerCase().includes(search) && !cleanedName.includes(search)) return false;
-                if (role && row.JOB_TITLE !== role) return false;
-                if (companies.length && !companies.some(c => row.EMPLOYER_NAME?.toLowerCase().includes(c))) return false;
-                if (levels.length && !levels.includes(row.PW_WAGE_LEVEL)) return false;
-                if (statuses.length && !statuses.some(s => row.CASE_STATUS?.toLowerCase().includes(s))) return false;
+                if (!matchesSearch(row, search)) return false;
+                if (!matchesMultiSelect('roleFilter', role => row.JOB_TITLE === role)) return false;
+                if (!matchesMultiSelect('companyFilter',
+                    company => row.EMPLOYER_NAME?.toLowerCase().includes(company))) return false;
+                if (!matchesMultiSelect('levelFilter', level => row.PW_WAGE_LEVEL === level)) return false;
+                if (!matchesMultiSelect('statusFilter',
+                    status => row.CASE_STATUS?.toLowerCase().includes(status.toLowerCase()))) return false;
                 return true;
             });
 
