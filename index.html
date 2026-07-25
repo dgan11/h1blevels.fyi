@@ -44,18 +44,19 @@
         .search-row {
             display: flex;
             gap: 12px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: flex-end;
-        }
-        .input-group.grow + .input-group {
-            margin-left: 24px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
-        .input-group.grow { flex: 1; min-width: 450px; max-width: 600px; }
+        .input-group.grow { flex: 1 1 300px; min-width: 300px; }
+        .input-group.role-filter { flex: 0 1 220px; min-width: 160px; }
+        .input-group.role-filter select { width: 100%; min-width: 0; }
+        .input-group.compact-filter { flex: 0 0 95px; }
+        .input-group.compact-filter .multi-select { width: 100%; min-width: 0; }
         label {
             font-size: 12px;
             font-weight: 600;
@@ -323,9 +324,10 @@
         .mobile-only { display: none; }
         @media (max-width: 768px) {
             .search-box { display: block; }
+            .search-row { flex-wrap: wrap; }
             .input-group { width: 100%; }
             .input-group.grow { min-width: 100%; max-width: 100%; }
-            .input-group.grow + .input-group { margin-left: 0; }
+            .input-group.role-filter, .input-group.compact-filter { flex: 1 0 100%; }
             .multi-select { width: 100%; }
             th { padding: 6px; font-size: 9px; }
             td { padding: 6px; font-size: 11px; }
@@ -356,13 +358,13 @@
                     <input type="text" id="search" placeholder="Company or job title..." autofocus autocomplete="off">
                     <div id="suggestions" class="suggestions"></div>
                 </div>
-                <div class="input-group">
+                <div class="input-group role-filter">
                     <label for="roleFilter">Role</label>
                     <select id="roleFilter">
                         <option value="">All roles</option>
                     </select>
                 </div>
-                <div class="input-group">
+                <div class="input-group compact-filter">
                     <label>Company</label>
                     <div class="multi-select" id="companyFilter">
                         <div class="ms-selected">All</div>
@@ -415,7 +417,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="input-group">
+                <div class="input-group compact-filter">
                     <label>Level</label>
                     <div class="multi-select" id="levelFilter">
                         <div class="ms-selected">All</div>
@@ -428,7 +430,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="input-group">
+                <div class="input-group compact-filter">
                     <label>Status</label>
                     <div class="multi-select" id="statusFilter">
                         <div class="ms-selected">All</div>
