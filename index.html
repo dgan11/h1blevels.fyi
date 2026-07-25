@@ -33,6 +33,11 @@
             margin-bottom: 20px;
         }
         .source a { color: #0066cc; }
+        .source-link {
+            color: #0066cc;
+            font-size: 12px;
+            white-space: nowrap;
+        }
         .search-box {
             background: #fff;
             padding: 20px;
@@ -338,7 +343,7 @@
             /* Hide less important columns on mobile: vs Min, Status, Date */
             th:nth-child(6), td:nth-child(6),
             th:nth-child(9), td:nth-child(9),
-            th:nth-child(10), td:nth-child(10) { display: none; }
+            th:nth-child(11), td:nth-child(11) { display: none; }
             /* Tighter columns on mobile */
             .location { max-width: 40px; overflow: hidden; text-overflow: ellipsis; }
             .info-icon { display: none; }
@@ -477,11 +482,12 @@
                     </th>
                     <th>Location</th>
                     <th>Status</th>
+                    <th>Source</th>
                     <th class="sortable" data-sort="date" data-dir="">Date <span class="sort-arrow">▼</span></th>
                 </tr>
             </thead>
             <tbody id="results">
-                <tr><td colspan="10" class="loading">Loading...</td></tr>
+                <tr><td colspan="11" class="loading">Loading...</td></tr>
             </tbody>
         </table>
     </div>
@@ -496,6 +502,10 @@
         let allData = [];
         let currentData = [];
         let currentSort = { col: 'wage_low', dir: 'desc' };
+        const sourceUrls = {
+            'DOL 25 Q4': 'https://www.dol.gov/sites/dolgov/files/ETA/oflc/pdfs/LCA_Disclosure_Data_FY2025_Q4.xlsx',
+            'DOL 26 Q2': 'https://www.dol.gov/media/LCA_Dislclosure_Data_FY2026_Q2.xlsx'
+        };
 
         // Multi-select setup
         document.querySelectorAll('.multi-select').forEach(ms => {
@@ -770,7 +780,7 @@
 
         function renderResults(data) {
             if (data.length === 0) {
-                resultsBody.innerHTML = '<tr><td colspan="10" class="empty">No results found</td></tr>';
+                resultsBody.innerHTML = '<tr><td colspan="11" class="empty">No results found</td></tr>';
                 return;
             }
 
@@ -791,6 +801,8 @@
                 if (status.toLowerCase().includes('denied')) status = 'Denied';
                 const date = formatDate(row.RECEIVED_DATE);
                 const loc = shortCity(row.WORKSITE_CITY);
+                const sourceRelease = row.SOURCE_RELEASE || '';
+                const sourceUrl = sourceUrls[sourceRelease];
 
                 let annualFrom = getCorrectedAnnualWage(row);
                 let annualTo = getCorrectedAnnualWageTo(row);
@@ -819,6 +831,7 @@
                     <td><span class="level level-${levelClass}" data-tooltip="${levelTooltip}">${esc(level)}</span></td>
                     <td class="location"><span data-full="${esc(loc.full)}">${loc.short}</span></td>
                     <td><span class="status status-${statusClass}">${esc(status)}</span></td>
+                    <td>${sourceUrl ? `<a class="source-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${esc(sourceRelease)}</a>` : '-'}</td>
                     <td>${date}</td>
                 </tr>`;
             }).join('');
