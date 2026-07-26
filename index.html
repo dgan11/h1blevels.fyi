@@ -25,7 +25,18 @@
         .subtitle {
             font-size: 14px;
             color: #666;
+            margin-bottom: 4px;
+        }
+        .source {
+            font-size: 12px;
+            color: #777;
             margin-bottom: 20px;
+        }
+        .source a { color: #0066cc; }
+        .source-link {
+            color: #0066cc;
+            font-size: 12px;
+            white-space: nowrap;
         }
         .search-box {
             background: #fff;
@@ -38,18 +49,19 @@
         .search-row {
             display: flex;
             gap: 12px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: flex-end;
-        }
-        .input-group.grow + .input-group {
-            margin-left: 24px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
-        .input-group.grow { flex: 1; min-width: 450px; max-width: 600px; }
+        .input-group.grow { flex: 1 1 300px; min-width: 300px; }
+        .input-group.role-filter { flex: 0 1 220px; min-width: 160px; }
+        .input-group.role-filter .multi-select { width: 100%; min-width: 0; }
+        .input-group.compact-filter { flex: 0 0 95px; }
+        .input-group.compact-filter .multi-select { width: 100%; min-width: 0; }
         label {
             font-size: 12px;
             font-weight: 600;
@@ -105,6 +117,14 @@
         }
         #companyFilter .ms-dropdown {
             min-width: 320px;
+        }
+        #roleFilter .ms-dropdown {
+            left: 0;
+            right: auto;
+            min-width: 320px;
+        }
+        #roleFilter .ms-options {
+            display: block;
         }
         .ms-dropdown .ms-options {
             display: grid;
@@ -317,9 +337,10 @@
         .mobile-only { display: none; }
         @media (max-width: 768px) {
             .search-box { display: block; }
+            .search-row { flex-wrap: wrap; }
             .input-group { width: 100%; }
             .input-group.grow { min-width: 100%; max-width: 100%; }
-            .input-group.grow + .input-group { margin-left: 0; }
+            .input-group.role-filter, .input-group.compact-filter { flex: 1 0 100%; }
             .multi-select { width: 100%; }
             th { padding: 6px; font-size: 9px; }
             td { padding: 6px; font-size: 11px; }
@@ -330,7 +351,7 @@
             /* Hide less important columns on mobile: vs Min, Status, Date */
             th:nth-child(6), td:nth-child(6),
             th:nth-child(9), td:nth-child(9),
-            th:nth-child(10), td:nth-child(10) { display: none; }
+            th:nth-child(11), td:nth-child(11) { display: none; }
             /* Tighter columns on mobile */
             .location { max-width: 40px; overflow: hidden; text-overflow: ellipsis; }
             .info-icon { display: none; }
@@ -341,6 +362,7 @@
     <div class="container">
         <h1>H-1B LCA Search</h1>
         <p class="subtitle">Legally required salary filings from AI startups and high-growth tech. More accurate than self-reported data. Companies must certify these wages with the DOL.</p>
+        <p class="source">Source: U.S. Department of Labor OFLC LCA Disclosure Data — <a href="https://www.dol.gov/sites/dolgov/files/ETA/oflc/pdfs/LCA_Disclosure_Data_FY2025_Q4.xlsx" target="_blank" rel="noopener noreferrer">FY2025 Q4</a> and <a href="https://www.dol.gov/media/LCA_Dislclosure_Data_FY2026_Q2.xlsx" target="_blank" rel="noopener noreferrer">FY2026 Q2</a>.</p>
 
         <div class="search-box">
             <div class="search-row">
@@ -349,7 +371,17 @@
                     <input type="text" id="search" placeholder="Company or job title..." autofocus autocomplete="off">
                     <div id="suggestions" class="suggestions"></div>
                 </div>
-                <div class="input-group">
+                <div class="input-group role-filter">
+                    <label>Role</label>
+                    <div class="multi-select" id="roleFilter">
+                        <div class="ms-selected">All</div>
+                        <div class="ms-dropdown">
+                            <div class="ms-actions"><span class="ms-all">All</span> <span class="ms-none">Clear</span></div>
+                            <div class="ms-options"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group compact-filter">
                     <label>Company</label>
                     <div class="multi-select" id="companyFilter">
                         <div class="ms-selected">All</div>
@@ -402,7 +434,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="input-group">
+                <div class="input-group compact-filter">
                     <label>Level</label>
                     <div class="multi-select" id="levelFilter">
                         <div class="ms-selected">All</div>
@@ -415,7 +447,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="input-group">
+                <div class="input-group compact-filter">
                     <label>Status</label>
                     <div class="multi-select" id="statusFilter">
                         <div class="ms-selected">All</div>
@@ -462,17 +494,19 @@
                     </th>
                     <th>Location</th>
                     <th>Status</th>
+                    <th>Source</th>
                     <th class="sortable" data-sort="date" data-dir="">Date <span class="sort-arrow">▼</span></th>
                 </tr>
             </thead>
             <tbody id="results">
-                <tr><td colspan="10" class="loading">Loading...</td></tr>
+                <tr><td colspan="11" class="loading">Loading...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
         const searchInput = document.getElementById('search');
+        const roleFilter = document.getElementById('roleFilter');
         const resultsBody = document.getElementById('results');
         const statsDiv = document.getElementById('stats');
 
@@ -480,12 +514,15 @@
         let allData = [];
         let currentData = [];
         let currentSort = { col: 'wage_low', dir: 'desc' };
+        const sourceUrls = {
+            'DOL 25 Q4': 'https://www.dol.gov/sites/dolgov/files/ETA/oflc/pdfs/LCA_Disclosure_Data_FY2025_Q4.xlsx',
+            'DOL 26 Q2': 'https://www.dol.gov/media/LCA_Dislclosure_Data_FY2026_Q2.xlsx'
+        };
 
         // Multi-select setup
         document.querySelectorAll('.multi-select').forEach(ms => {
             const selected = ms.querySelector('.ms-selected');
             const dropdown = ms.querySelector('.ms-dropdown');
-            const checkboxes = ms.querySelectorAll('input[type="checkbox"]');
             const allBtn = ms.querySelector('.ms-all');
             const noneBtn = ms.querySelector('.ms-none');
 
@@ -497,25 +534,27 @@
                 e.stopPropagation();
             });
 
-            checkboxes.forEach(cb => {
-                cb.addEventListener('change', () => {
+            dropdown.addEventListener('change', (e) => {
+                if (e.target.matches('input[type="checkbox"]')) {
                     updateSelectedText(ms);
+                    if (ms.id === 'companyFilter') updateRoleOptions();
                     filterAndRender();
-                });
-                cb.addEventListener('click', e => e.stopPropagation());
+                }
             });
 
             dropdown.addEventListener('click', e => e.stopPropagation());
 
             allBtn.addEventListener('click', () => {
-                checkboxes.forEach(cb => cb.checked = true);
+                ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
                 updateSelectedText(ms);
+                if (ms.id === 'companyFilter') updateRoleOptions();
                 filterAndRender();
             });
 
             noneBtn.addEventListener('click', () => {
-                checkboxes.forEach(cb => cb.checked = false);
+                ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                 updateSelectedText(ms);
+                if (ms.id === 'companyFilter') updateRoleOptions();
                 filterAndRender();
             });
         });
@@ -533,11 +572,6 @@
             else selected.textContent = checked.length + ' selected';
         }
 
-        function getFilterValues(id) {
-            const ms = document.getElementById(id);
-            return Array.from(ms.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-        }
-
         loadData();
 
         function debounce(fn, ms) {
@@ -548,6 +582,7 @@
         const suggestionsDiv = document.getElementById('suggestions');
 
         searchInput.addEventListener('input', () => {
+            updateRoleOptions();
             filterAndRender();
             showSuggestions();
         });
@@ -587,6 +622,7 @@
                     searchInput.value = suggestions[selectedIndex].dataset.value;
                     suggestionsDiv.classList.remove('open');
                     selectedIndex = -1;
+                    updateRoleOptions();
                     filterAndRender();
                 }
             }
@@ -648,6 +684,7 @@
                 el.addEventListener('click', () => {
                     searchInput.value = el.dataset.value;
                     suggestionsDiv.classList.remove('open');
+                    updateRoleOptions();
                     filterAndRender();
                 });
             });
@@ -682,21 +719,65 @@
             const elapsed = (performance.now() - start).toFixed(0);
             console.log(`Loaded ${allData.length} records in ${elapsed}ms`);
 
+            updateRoleOptions();
             filterAndRender();
+        }
+
+        function matchesSearch(row, search) {
+            if (!search) return true;
+            const cleanedName = cleanCompany(row.EMPLOYER_NAME).toLowerCase();
+            return row.JOB_TITLE?.toLowerCase().includes(search)
+                || row.EMPLOYER_NAME?.toLowerCase().includes(search)
+                || cleanedName.includes(search);
+        }
+
+        function matchesMultiSelect(id, predicate) {
+            const checkboxes = Array.from(document.querySelectorAll(`#${id} input[type="checkbox"]`));
+            const checked = checkboxes.filter(cb => cb.checked);
+            if (checkboxes.length === 0 || checked.length === 0) return false;
+            if (checked.length === checkboxes.length) return true;
+            return checked.some(cb => predicate(cb.value));
+        }
+
+        function updateRoleOptions() {
+            const options = roleFilter.querySelector('.ms-options');
+            const existing = Array.from(options.querySelectorAll('input[type="checkbox"]'));
+            const allWereSelected = existing.length === 0 || existing.every(cb => cb.checked);
+            const selectedRoles = new Set(existing.filter(cb => cb.checked).map(cb => cb.value));
+            const search = searchInput.value.toLowerCase();
+
+            const roles = [...new Set(allData
+                .filter(row => matchesSearch(row, search))
+                .filter(row => matchesMultiSelect('companyFilter',
+                    company => row.EMPLOYER_NAME?.toLowerCase().includes(company)))
+                .map(row => row.JOB_TITLE)
+                .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b));
+
+            options.replaceChildren();
+            roles.forEach(role => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = role;
+                checkbox.checked = allWereSelected || selectedRoles.has(role);
+                label.append(checkbox, document.createTextNode(' ' + role));
+                options.appendChild(label);
+            });
+            updateSelectedText(roleFilter);
         }
 
         function filterAndRender() {
             const search = searchInput.value.toLowerCase();
-            const companies = getFilterValues('companyFilter');
-            const levels = getFilterValues('levelFilter');
-            const statuses = getFilterValues('statusFilter').map(s => s.toLowerCase());
 
             currentData = allData.filter(row => {
-                const cleanedName = cleanCompany(row.EMPLOYER_NAME).toLowerCase();
-                if (search && !row.JOB_TITLE?.toLowerCase().includes(search) && !row.EMPLOYER_NAME?.toLowerCase().includes(search) && !cleanedName.includes(search)) return false;
-                if (companies.length && !companies.some(c => row.EMPLOYER_NAME?.toLowerCase().includes(c))) return false;
-                if (levels.length && !levels.includes(row.PW_WAGE_LEVEL)) return false;
-                if (statuses.length && !statuses.some(s => row.CASE_STATUS?.toLowerCase().includes(s))) return false;
+                if (!matchesSearch(row, search)) return false;
+                if (!matchesMultiSelect('roleFilter', role => row.JOB_TITLE === role)) return false;
+                if (!matchesMultiSelect('companyFilter',
+                    company => row.EMPLOYER_NAME?.toLowerCase().includes(company))) return false;
+                if (!matchesMultiSelect('levelFilter', level => row.PW_WAGE_LEVEL === level)) return false;
+                if (!matchesMultiSelect('statusFilter',
+                    status => row.CASE_STATUS?.toLowerCase().includes(status.toLowerCase()))) return false;
                 return true;
             });
 
@@ -739,7 +820,7 @@
 
         function renderResults(data) {
             if (data.length === 0) {
-                resultsBody.innerHTML = '<tr><td colspan="10" class="empty">No results found</td></tr>';
+                resultsBody.innerHTML = '<tr><td colspan="11" class="empty">No results found</td></tr>';
                 return;
             }
 
@@ -760,6 +841,8 @@
                 if (status.toLowerCase().includes('denied')) status = 'Denied';
                 const date = formatDate(row.RECEIVED_DATE);
                 const loc = shortCity(row.WORKSITE_CITY);
+                const sourceRelease = row.SOURCE_RELEASE || '';
+                const sourceUrl = sourceUrls[sourceRelease];
 
                 let annualFrom = getCorrectedAnnualWage(row);
                 let annualTo = getCorrectedAnnualWageTo(row);
@@ -788,6 +871,7 @@
                     <td><span class="level level-${levelClass}" data-tooltip="${levelTooltip}">${esc(level)}</span></td>
                     <td class="location"><span data-full="${esc(loc.full)}">${loc.short}</span></td>
                     <td><span class="status status-${statusClass}">${esc(status)}</span></td>
+                    <td>${sourceUrl ? `<a class="source-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${esc(sourceRelease)}</a>` : '-'}</td>
                     <td>${date}</td>
                 </tr>`;
             }).join('');
