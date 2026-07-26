@@ -19,18 +19,15 @@ This data is more accurate than other salary sites that rely on self-reporting. 
 
 ## Deployment (CI/CD)
 
-This repo is a static site. CI/CD is configured to deploy to Vercel.
+This repo is a static site deployed through Vercel's Git integration.
 
 - **Production:** the `main` branch deploys to production.
 - **Previews:** every other branch push gets a preview URL to test PRs before merging.
 
 ### Setup
 
-1. Create a Vercel project for this repo.
-2. Add these GitHub repo secrets:
-   - `VERCEL_TOKEN`
-   - `VERCEL_ORG_ID`
-   - `VERCEL_PROJECT_ID`
+1. Connect this GitHub repository to a Vercel project.
+2. Set `main` as the production branch.
 3. Push any branch and use the preview URL shown in:
    - **Vercel** dashboard, or
    - **GitHub Deployments** on the commit/PR.
